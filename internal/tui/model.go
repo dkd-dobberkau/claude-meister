@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/olivercodes/claude-meister/internal/project"
 	"github.com/olivercodes/claude-meister/internal/squirrel"
 )
 
@@ -41,15 +42,24 @@ func (c category) String() string {
 	return ""
 }
 
+// actionResultMsg is returned by async git action commands.
+type actionResultMsg struct {
+	success bool
+	message string
+}
+
 type Model struct {
-	status   *squirrel.Status
-	table    table.Model
-	category category
-	view     view
-	selected *squirrel.Project
-	width    int
-	height   int
-	message  string
+	status        *squirrel.Status
+	table         table.Model
+	category      category
+	view          view
+	selected      *squirrel.Project
+	width         int
+	height        int
+	message       string
+	confirming    bool
+	confirmAction string
+	confirmLabel  string
 }
 
 func NewModel(status *squirrel.Status) Model {
@@ -60,6 +70,36 @@ func NewModel(status *squirrel.Status) Model {
 	}
 	m.table = m.buildTable()
 	return m
+}
+
+func commitAction(path string) tea.Cmd {
+	return func() tea.Msg {
+		err := project.GitCommitAll(path, "chore: claude-meister cleanup")
+		if err != nil {
+			return actionResultMsg{success: false, message: fmt.Sprintf("Commit failed: %v", err)}
+		}
+		return actionResultMsg{success: true, message: "Changes committed successfully"}
+	}
+}
+
+func stashAction(path string) tea.Cmd {
+	return func() tea.Msg {
+		err := project.GitStash(path)
+		if err != nil {
+			return actionResultMsg{success: false, message: fmt.Sprintf("Stash failed: %v", err)}
+		}
+		return actionResultMsg{success: true, message: "Changes stashed successfully"}
+	}
+}
+
+func discardAction(path string) tea.Cmd {
+	return func() tea.Msg {
+		err := project.GitDiscardAll(path)
+		if err != nil {
+			return actionResultMsg{success: false, message: fmt.Sprintf("Discard failed: %v", err)}
+		}
+		return actionResultMsg{success: true, message: "All changes discarded"}
+	}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -74,14 +114,52 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table = m.buildTable()
 		return m, nil
 
+	case actionResultMsg:
+		m.message = msg.message
+		m.confirming = false
+		m.confirmAction = ""
+		m.confirmLabel = ""
+		m.view = viewList
+		m.selected = nil
+		return m, nil
+
 	case tea.KeyMsg:
+		// If a message is displayed, clear it on any key press
+		if m.message != "" {
+			m.message = ""
+			return m, nil
+		}
+
+		// Handle confirmation prompt
+		if m.confirming && m.selected != nil {
+			switch msg.String() {
+			case "y":
+				path := m.selected.Path
+				switch m.confirmAction {
+				case "commit":
+					return m, commitAction(path)
+				case "stash":
+					return m, stashAction(path)
+				case "discard":
+					return m, discardAction(path)
+				}
+			case "n", "esc":
+				m.confirming = false
+				m.confirmAction = ""
+				m.confirmLabel = ""
+			}
+			return m, nil
+		}
+
 		switch {
 		case msg.String() == "q" || msg.String() == "ctrl+c":
 			return m, tea.Quit
 
 		case msg.String() == "tab":
-			m.category = (m.category + 1) % 4
-			m.table = m.buildTable()
+			if m.view == viewList {
+				m.category = (m.category + 1) % 4
+				m.table = m.buildTable()
+			}
 			return m, nil
 
 		case msg.String() == "enter":
@@ -101,6 +179,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.view == viewDetail {
 				m.view = viewList
 				m.selected = nil
+			}
+			return m, nil
+
+		// Detail view action keys
+		case msg.String() == "c":
+			if m.view == viewDetail {
+				m.confirming = true
+				m.confirmAction = "commit"
+				m.confirmLabel = "Commit all changes?"
+			}
+			return m, nil
+
+		case msg.String() == "s":
+			if m.view == viewDetail {
+				m.confirming = true
+				m.confirmAction = "stash"
+				m.confirmLabel = "Stash all changes?"
+			}
+			return m, nil
+
+		case msg.String() == "x":
+			if m.view == viewDetail {
+				m.confirming = true
+				m.confirmAction = "discard"
+				m.confirmLabel = "Discard ALL changes? This cannot be undone!"
 			}
 			return m, nil
 		}
@@ -154,6 +257,11 @@ func (m Model) renderList() string {
 	// Table
 	b.WriteString(m.table.View() + "\n\n")
 
+	// Message banner
+	if m.message != "" {
+		b.WriteString(fmt.Sprintf("  %s\n\n", m.message))
+	}
+
 	// Help
 	help := HelpStyle.Render("[c]lean  [a]rchive  [d]elete  [D]ocker-stop  [tab] category  [q]uit  [?]help")
 	b.WriteString(help)
@@ -190,7 +298,17 @@ func (m Model) renderDetail() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render("  [c]lean  [a]rchive  [d]elete  [D]ocker-stop  [esc] back"))
+
+	if m.confirming {
+		b.WriteString(DirtyStyle.Render(fmt.Sprintf("  %s", m.confirmLabel)))
+		b.WriteString("\n")
+		b.WriteString(HelpStyle.Render("  [y]es  [n]o  [esc] cancel"))
+	} else if m.message != "" {
+		b.WriteString(fmt.Sprintf("  %s\n", m.message))
+		b.WriteString(HelpStyle.Render("  Press any key to continue"))
+	} else {
+		b.WriteString(HelpStyle.Render("  [c]ommit  [s]tash  [x] discard  [esc] back"))
+	}
 
 	return b.String()
 }
