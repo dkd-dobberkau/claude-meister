@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/olivercodes/claude-meister/internal/config"
+	"github.com/dkd-dobberkau/claude-meister/internal/config"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

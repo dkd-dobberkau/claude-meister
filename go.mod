@@ -1,4 +1,4 @@
-module github.com/olivercodes/claude-meister
+module github.com/dkd-dobberkau/claude-meister
 
 go 1.25.0
 

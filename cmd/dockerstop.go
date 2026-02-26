@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/olivercodes/claude-meister/internal/config"
-	"github.com/olivercodes/claude-meister/internal/project"
-	"github.com/olivercodes/claude-meister/internal/squirrel"
+	"github.com/dkd-dobberkau/claude-meister/internal/config"
+	"github.com/dkd-dobberkau/claude-meister/internal/project"
+	"github.com/dkd-dobberkau/claude-meister/internal/squirrel"
 	"github.com/spf13/cobra"
 )
 

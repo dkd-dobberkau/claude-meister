@@ -7,8 +7,8 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/olivercodes/claude-meister/internal/project"
-	"github.com/olivercodes/claude-meister/internal/squirrel"
+	"github.com/dkd-dobberkau/claude-meister/internal/project"
+	"github.com/dkd-dobberkau/claude-meister/internal/squirrel"
 )
 
 type view int

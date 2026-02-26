@@ -5,9 +5,9 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/olivercodes/claude-meister/internal/config"
-	"github.com/olivercodes/claude-meister/internal/squirrel"
-	"github.com/olivercodes/claude-meister/internal/tui"
+	"github.com/dkd-dobberkau/claude-meister/internal/config"
+	"github.com/dkd-dobberkau/claude-meister/internal/squirrel"
+	"github.com/dkd-dobberkau/claude-meister/internal/tui"
 	"github.com/spf13/cobra"
 )
 
