@@ -1,0 +1,33 @@
+project_name: claude-meister
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/dkd-dobberkau/claude-meister/cmd.version={{.Version}}
+
+archives:
+  - format: tar.gz
+
+brews:
+  - repository:
+      owner: dkd-dobberkau
+      name: homebrew-tap
+    homepage: https://github.com/dkd-dobberkau/claude-meister
+    description: CLI/TUI tool to clean up forgotten Claude Code projects
+    license: MIT
+    install: |
+      bin.install "claude-meister"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
